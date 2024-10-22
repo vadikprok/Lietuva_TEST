@@ -1,0 +1,308 @@
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Тест по Литовскому</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #e0f7fa;
+      padding: 20px;
+    }
+
+    p {
+      font-size: 25px;
+    }
+
+    #test-container {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #ffffff;
+      border-radius: 10px;
+      box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    h2 {
+      color: #00796b;
+    }
+
+    button {
+      background-color: #00796b;
+      color: white;
+      margin-left: 15px;
+      margin-top: 15px;
+      padding: 10px 15px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 25px;
+    }
+
+    button:hover {
+      background-color: #004d40;
+    }
+
+    input[type="file"] {
+      margin-bottom: 20px;
+    }
+
+    #question-container {
+      display: none;
+    }
+
+    #result {
+      display: none;
+    }
+
+    #next-btn {
+      display: none;
+      float: right;
+      position: relative;
+      top: 15px;
+    }
+
+    #user-answer {
+      display: none;
+      /* Скрываем поле ввода по умолчанию */
+      width: 100%;
+      /* Устанавливаем ширину на 100% */
+      height: 50px;
+      /* Увеличиваем высоту поля ввода */
+      font-size: 20px;
+      /* Увеличиваем размер шрифта */
+      padding: 10px;
+      /* Добавляем внутренний отступ для удобства ввода */
+    }
+
+    #test-selection {
+      display: none;
+      /* Скрываем выбор теста по умолчанию */
+    }
+  </style>
+</head>
+
+<body>
+  <div id="test-container">
+    <h2>Загрузка теста по Литовскому языку</h2>
+    <input type="file" id="file-input">
+    <button id="upload-btn">Загрузить</button>
+
+    <div id="test-selection">
+      <h3>Выберите тип теста:</h3>
+      <button id="manual-input-test-btn">Тест с вводом вручную</button>
+      <button id="multiple-choice-test-btn">Тест с выбором варианта</button>
+    </div>
+
+    <div id="question-container">
+      <p id="question"></p>
+      <input type="text" id="user-answer" placeholder="Введите ваш ответ">
+      <button id="confirm-btn" style="display: none;">Подтвердить ответ</button>
+      <div id="answer-buttons"></div>
+      <button id="next-btn" style="display: none;">Следующий вопрос</button>
+    </div>
+
+    <div id="result">
+      <h3>Тест завершен!</h3>
+      <p id="final-score"></p>
+    </div>
+  </div>
+
+  <script>
+    const fileInput = document.getElementById('file-input');
+    const uploadButton = document.getElementById('upload-btn');
+    const questionElement = document.getElementById('question');
+    const userAnswerInput = document.getElementById('user-answer');
+    const confirmButton = document.getElementById('confirm-btn');
+    const nextButton = document.getElementById('next-btn');
+    const questionContainer = document.getElementById('question-container');
+    const resultContainer = document.getElementById('result');
+    const finalScoreElement = document.getElementById('final-score');
+    const testSelection = document.getElementById('test-selection');
+    const manualInputTestButton = document.getElementById('manual-input-test-btn');
+    const multipleChoiceTestButton = document.getElementById('multiple-choice-test-btn');
+    const answerButtonsElement = document.getElementById('answer-buttons');
+
+    let questions = [];
+    let currentQuestionIndex = 0;
+    let score = 0;
+    let shuffledQuestions = [];
+
+    // Обработка загрузки файла по нажатию на кнопку "Загрузить"
+    uploadButton.addEventListener('click', handleFileUpload);
+
+    function handleFileUpload() {
+      const file = fileInput.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          const text = e.target.result;
+          parseQuestions(text);
+          if (questions.length > 0) {
+            showTestSelection(); // Показать выбор теста
+          } else {
+            alert('Файл пуст или некорректный.');
+          }
+        };
+        reader.readAsText(file);
+      } else {
+        alert('Пожалуйста, выберите файл.');
+      }
+    }
+
+    // Парсинг вопросов из файла
+    function parseQuestions(text) {
+      const lines = text.split('\n');
+      questions = lines.map(line => {
+        const [questionText, correctAnswer] = line.split(' - ');
+        return {
+          question: questionText.trim(),
+          correctAnswer: correctAnswer.trim()
+        };
+      }).filter(q => q.question && q.correctAnswer); // Фильтрация пустых строк
+    }
+
+    // Показать выбор теста
+    function showTestSelection() {
+      testSelection.style.display = 'block';
+      fileInput.style.display = 'none'; // Скрываем элемент загрузки файла
+      uploadButton.style.display = 'none'; // Скрываем кнопку загрузки
+    }
+
+    // Запуск теста с ручным вводом
+    manualInputTestButton.addEventListener('click', startManualInputTest);
+
+    function startManualInputTest() {
+      currentQuestionIndex = 0;
+      score = 0;
+      userAnswerInput.value = ''; // Очищаем поле ввода
+      questionContainer.style.display = 'block'; // Показываем контейнер вопросов
+      resultContainer.style.display = 'none'; // Прячем результат, если был показан ранее
+      showManualInputQuestion();
+      testSelection.style.display = 'none'; // Скрываем выбор теста
+    }
+
+    // Показать текущий вопрос для теста с вводом вручную
+    function showManualInputQuestion() {
+      const question = questions[currentQuestionIndex];
+      const questionNumber = currentQuestionIndex + 1; // Определяем номер вопроса
+      questionElement.innerText = `Вопрос ${questionNumber}: ${question.question}`; // Добавляем номер перед текстом вопроса
+      userAnswerInput.style.display = 'block'; // Показываем поле для ввода
+      confirmButton.style.display = 'block'; // Показываем кнопку "Подтвердить"
+      userAnswerInput.placeholder = "Введите ваш ответ"; // Устанавливаем текст подсказки
+      nextButton.style.display = 'none'; // Прячем кнопку "Следующий"
+    }
+
+    // Проверка ответа для теста с вводом вручную
+    confirmButton.addEventListener('click', () => {
+      const question = questions[currentQuestionIndex];
+      checkManualInputAnswer(userAnswerInput.value.trim(), question.correctAnswer);
+    });
+
+    function checkManualInputAnswer(userInput, correctAnswer) {
+      if (userInput.toLowerCase() === correctAnswer.toLowerCase()) {
+        alert('Правильно!'); // Всплывающее окно для правильного ответа
+        score++;
+      } else {
+        alert('Неправильно!'); // Всплывающее окно для неправильного ответа
+      }
+      currentQuestionIndex++;
+      userAnswerInput.value = ''; // Очистка поля ввода перед показом следующего вопроса
+      if (currentQuestionIndex < questions.length) {
+        showManualInputQuestion();
+      } else {
+        endTest();
+      }
+    }
+
+    // Запуск теста с выбором варианта
+    multipleChoiceTestButton.addEventListener('click', startMultipleChoiceTest);
+
+    function startMultipleChoiceTest() {
+      currentQuestionIndex = 0;
+      score = 0;
+      shuffledQuestions = shuffle(questions).slice(0, 20); // Перемешиваем вопросы и выбираем 20
+      questionContainer.style.display = 'block'; // Показываем контейнер вопросов
+      resultContainer.style.display = 'none'; // Прячем результат, если был показан ранее
+      showMultipleChoiceQuestion();
+      testSelection.style.display = 'none'; // Скрываем выбор теста
+    }
+
+    // Показать текущий вопрос для теста с выбором варианта
+    function showMultipleChoiceQuestion() {
+      const question = shuffledQuestions[currentQuestionIndex];
+      const questionNumber = currentQuestionIndex + 1; // Определяем номер вопроса
+      questionElement.innerText = `Вопрос ${questionNumber}: ${question.question}`; // Добавляем номер перед текстом вопроса
+      answerButtonsElement.innerHTML = '';  // Очистить старые кнопки
+      const correctAnswer = question.correctAnswer;
+      const wrongAnswers = questions.map(q => q.correctAnswer).filter(answer => answer !== correctAnswer); // Получаем неправильные ответы
+
+      // Генерация вариантов ответов
+      let answers = [correctAnswer];
+      while (answers.length < 4 && wrongAnswers.length > 0) {
+        const randomIndex = Math.floor(Math.random() * wrongAnswers.length);
+        answers.push(wrongAnswers[randomIndex]);
+        wrongAnswers.splice(randomIndex, 1); // Удаляем выбранный неправильный ответ
+      }
+      answers = shuffle(answers); // Перемешать ответы
+
+      // Создание кнопок для ответов
+      answers.forEach(answer => {
+        const button = document.createElement('button');
+        button.innerText = answer;
+        button.className = 'answer-button';
+        button.addEventListener('click', () => checkMultipleChoiceAnswer(answer, correctAnswer));
+        answerButtonsElement.appendChild(button);
+      });
+    }
+
+    // Проверка ответа для теста с выбором варианта
+    function checkMultipleChoiceAnswer(selectedAnswer, correctAnswer) {
+      if (selectedAnswer.toLowerCase() === correctAnswer.toLowerCase()) {
+        alert('Правильно!'); // Всплывающее окно для правильного ответа
+        score++;
+      } else {
+        alert('Неправильно!'); // Всплывающее окно для неправильного ответа
+      }
+      currentQuestionIndex++;
+      if (currentQuestionIndex < shuffledQuestions.length) {
+        showMultipleChoiceQuestion();
+      } else {
+        endTest();
+      }
+    }
+
+    // Завершение теста
+    function endTest() {
+      questionContainer.style.display = 'none';
+      resultContainer.style.display = 'block';
+      finalScoreElement.innerText = `Ваш результат: ${score} из ${questions.length}`;
+      resetTest();
+    }
+
+    // Сброс теста
+    function resetTest() {
+      fileInput.style.display = 'block'; // Показываем элемент загрузки файла
+      uploadButton.style.display = 'block'; // Показываем кнопку загрузки
+      userAnswerInput.style.display = 'none'; // Скрываем поле ввода
+      confirmButton.style.display = 'none'; // Скрываем кнопку подтверждения
+      answerButtonsElement.innerHTML = ''; // Очистить кнопки ответов
+      testSelection.style.display = 'none'; // Скрываем выбор теста
+    }
+
+    // Функция для перемешивания массива
+    function shuffle(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+      return array;
+    }
+
+  </script>
+</body>
+
+</html>

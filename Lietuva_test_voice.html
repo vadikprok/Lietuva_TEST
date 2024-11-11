@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Тест по Литовскому</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+  <!-- Подключаем Font Awesome -->
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #e0f7fa;
+      padding: 20px;
+    }
+
+    p {
+      font-size: 25px;
+    }
+
+    #test-container {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #ffffff;
+      border-radius: 10px;
+      box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    h2 {
+      color: #00796b;
+    }
+
+    button {
+      background-color: #00796b;
+      color: white;
+      margin-left: 15px;
+      margin-top: 15px;
+      padding: 10px 15px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 25px;
+    }
+
+    button:hover {
+      background-color: #004d40;
+    }
+
+    input[type="file"] {
+      margin-bottom: 20px;
+    }
+
+    #question-container {
+      display: none;
+      text-align: center;
+    }
+
+    #question-image {
+      display: none;
+      margin: auto;
+    }
+
+    #result {
+      display: none;
+    }
+
+    #answer-buttons {
+      margin-top: 20px;
+    }
+
+    img {
+      max-width: 300px;
+      height: auto;
+      margin-bottom: 20px;
+    }
+
+    .highlighted-word {
+      color: blue;
+      cursor: pointer;
+      text-decoration: underline;
+    }
+
+    .audio-icon {
+      color: blue;
+      cursor: pointer;
+      margin-left: 10px;
+      font-size: 20px;
+    }
+
+    .audio-icon:hover {
+      color: #00796b;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="test-container">
+    <h2>Загрузка теста по Литовскому языку</h2>
+    <input type="file" id="file-input" accept=".txt">
+    <button id="upload-btn">Загрузить</button>
+
+    <div id="test-selection">
+      <h3>Выберите тип теста:</h3>
+      <button id="multiple-choice-test-btn">Тест с выбором варианта</button>
+    </div>
+
+    <div id="question-container">
+      <img id="question-image" src="" alt="Вопрос" style="display:none;">
+      <p id="question"></p>
+      <div id="answer-buttons"></div>
+      <button id="next-btn" style="display: none;">Следующий вопрос</button>
+    </div>
+
+    <div id="result">
+      <h3>Тест завершен!</h3>
+      <p id="final-score"></p>
+    </div>
+  </div>
+
+  <script>
+    const fileInput = document.getElementById('file-input');
+    const uploadButton = document.getElementById('upload-btn');
+    const questionElement = document.getElementById('question');
+    const questionImage = document.getElementById('question-image');
+    const nextButton = document.getElementById('next-btn');
+    const questionContainer = document.getElementById('question-container');
+    const resultContainer = document.getElementById('result');
+    const finalScoreElement = document.getElementById('final-score');
+    const testSelection = document.getElementById('test-selection');
+    const multipleChoiceTestButton = document.getElementById('multiple-choice-test-btn');
+    const answerButtonsElement = document.getElementById('answer-buttons');
+
+    let questions = [];
+    let currentQuestionIndex = 0;
+    let score = 0;
+    let shuffledQuestions = [];
+
+    // Обработка загрузки файла по нажатию на кнопку "Загрузить"
+    uploadButton.addEventListener('click', handleFileUpload);
+
+    function handleFileUpload() {
+      const file = fileInput.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          const text = e.target.result;
+          parseQuestions(text);
+          if (questions.length > 0) {
+            showTestSelection(); // Показать выбор теста
+          } else {
+            alert('Файл пуст или некорректный.');
+          }
+        };
+        reader.readAsText(file);
+      } else {
+        alert('Пожалуйста, выберите файл.');
+      }
+    }
+
+    // Парсинг вопросов из файла
+    function parseQuestions(text) {
+      const lines = text.trim().split('\n');
+      questions = lines.map(line => {
+        const parts = line.split(' - ');
+        if (parts.length >= 3) {
+          return {
+            question: parts[0].trim(),
+            correctAnswer: parts[1].trim(),
+            audioLink: parts[2].trim() // Ссылка на аудио
+          };
+        }
+        return null; // Возвращаем null для неправильных форматов
+      }).filter(q => q !== null); // Фильтрация пустых строк и неправильных форматов
+    }
+
+    // Показать выбор теста
+    function showTestSelection() {
+      testSelection.style.display = 'block';
+      fileInput.style.display = 'none'; // Скрываем элемент загрузки файла
+      uploadButton.style.display = 'none'; // Скрываем кнопку загрузки
+    }
+
+    // Запуск теста с выбором варианта
+    multipleChoiceTestButton.addEventListener('click', startMultipleChoiceTest);
+
+    function startMultipleChoiceTest() {
+      currentQuestionIndex = 0;
+      score = 0;
+      shuffledQuestions = shuffle(questions).slice(0, 20); // Перемешиваем вопросы и выбираем 20
+      questionContainer.style.display = 'block'; // Показываем контейнер вопросов
+      resultContainer.style.display = 'none'; // Прячем результат, если был показан ранее
+      showMultipleChoiceQuestion();
+      testSelection.style.display = 'none'; // Скрываем выбор теста
+    }
+
+    // Показать текущий вопрос для теста с выбором варианта
+    function showMultipleChoiceQuestion() {
+      const question = shuffledQuestions[currentQuestionIndex];
+      const questionNumber = currentQuestionIndex + 1; // Определяем номер вопроса
+
+      // Обновляем текст вопроса и добавляем значок динамика
+      const wordMatch = question.question.match(/"([^"]+)"/);
+      const wordToHighlight = wordMatch ? wordMatch[1] : '';
+      const questionText = question.question.replace(wordToHighlight, `<span>${wordToHighlight}</span><i onclick="playAudio('${question.audioLink}')" class="fas fa-volume-up audio-icon"></i>`);
+
+      // Отображение изображения вопроса
+      if (question.imageUrl) {
+        questionImage.src = question.imageUrl; // Устанавливаем источник изображения
+        questionImage.style.display = 'block'; // Показываем изображение
+      } else {
+        questionImage.style.display = 'none'; // Скрываем изображение, если нет URL
+      }
+
+      // Обновляем текст вопроса
+      questionElement.innerHTML = `Вопрос ${questionNumber}: ${questionText}`;
+      answerButtonsElement.innerHTML = '';  // Очистить старые кнопки
+      const correctAnswer = question.correctAnswer;
+      const wrongAnswers = questions.map(q => q.correctAnswer).filter(answer => answer !== correctAnswer); // Получаем неправильные ответы
+
+      // Генерация вариантов ответов
+      let answers = [correctAnswer];
+      while (answers.length < 4 && wrongAnswers.length > 0) {
+        const randomIndex = Math.floor(Math.random() * wrongAnswers.length);
+        answers.push(wrongAnswers[randomIndex]);
+        wrongAnswers.splice(randomIndex, 1); // Удаляем выбранный неправильный ответ
+      }
+      answers = shuffle(answers); // Перемешать ответы
+
+      // Создание кнопок для ответов
+      answers.forEach(answer => {
+        const button = document.createElement('button');
+        button.innerText = answer;
+        button.className = 'answer-button';
+        button.addEventListener('click', () => checkMultipleChoiceAnswer(answer, correctAnswer));
+        answerButtonsElement.appendChild(button);
+      });
+    }
+
+    // Проверка ответа для теста с выбором варианта
+    function checkMultipleChoiceAnswer(selectedAnswer, correctAnswer) {
+      if (selectedAnswer.toLowerCase() === correctAnswer.toLowerCase()) {
+        alert('Правильно!'); // Всплывающее окно для правильного ответа
+        score++;
+      } else {
+        alert('Неправильно!'); // Всплывающее окно для неправильного ответа
+      }
+      currentQuestionIndex++;
+      if (currentQuestionIndex < shuffledQuestions.length) {
+        showMultipleChoiceQuestion();
+      } else {
+        endTest();
+      }
+    }
+
+    // Функция для воспроизведения аудио
+    function playAudio(audioUrl) {
+      const audio = new Audio(audioUrl);
+      audio.play();
+    }
+
+    // Завершение теста
+    function endTest() {
+      questionContainer.style.display = 'none';
+      resultContainer.style.display = 'block';
+      finalScoreElement.innerText = `Ваш результат: ${score} из ${shuffledQuestions.length}`;
+      resetTest();
+    }
+
+    // Сброс теста
+    function resetTest() {
+      fileInput.style.display = 'block'; // Показываем элемент загрузки файла
+      uploadButton.style.display = 'block'; // Показываем кнопку загрузки
+      questionImage.style.display = 'none'; // Скрываем изображение
+      answerButtonsElement.innerHTML = ''; // Очистить кнопки ответов
+      testSelection.style.display = 'none'; // Скрываем выбор теста
+      questions = []; // Очищаем массив вопросов
+    }
+
+    // Функция для перемешивания массива
+    function shuffle(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+      return array;
+    }
+  </script>
+</body>
+
+</html>
